@@ -1,6 +1,7 @@
-﻿"""Synthesis & Research Writer Agent."""
+﻿"""High-speed Synthesis & Research Writer Agent with parallel section drafting."""
 
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict, Any, Optional
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -28,7 +29,7 @@ Rules:
 
 
 class WriterAgent:
-    """Writer Agent that synthesizes source evidence into structured section drafts."""
+    """Writer Agent that synthesizes source evidence into structured section drafts concurrently."""
 
     def __init__(self, llm: BaseChatModel):
         self.llm = llm
@@ -36,7 +37,7 @@ class WriterAgent:
     def _format_source_catalog(self, sources: List[SourceDocument]) -> str:
         catalog_lines = []
         for s in sources:
-            content_snippet = s.content[:600] if s.content else s.snippet
+            content_snippet = s.content[:500] if s.content else s.snippet
             catalog_lines.append(f"Source [{s.id}] Title: {s.title} ({s.source_type})")
             catalog_lines.append(f"URL: {s.url}")
             if s.authors:
@@ -111,10 +112,17 @@ class WriterAgent:
         sources: List[SourceDocument],
         feedback: Optional[ReviewFeedback] = None
     ) -> List[SectionDraft]:
-        """Drafts all sections specified in the ResearchPlan."""
-        sections = []
-        for sub in plan.subtopics:
-            logger.info(f"WriterAgent drafting section: {sub.title}")
-            section = self.write_section(sub, plan.topic, sources, feedback)
-            sections.append(section)
+        """Drafts all sections concurrently in parallel threads for maximum speed."""
+        subtopics = plan.subtopics
+        if not subtopics:
+            return []
+
+        # Execute section drafts concurrently
+        with ThreadPoolExecutor(max_workers=min(len(subtopics), 4)) as executor:
+            futures = [
+                executor.submit(self.write_section, sub, plan.topic, sources, feedback)
+                for sub in subtopics
+            ]
+            sections = [f.result() for f in futures]
+
         return sections

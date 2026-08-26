@@ -1,15 +1,14 @@
-﻿"""Search tools integration: DuckDuckGo, ArXiv, Wikipedia, and Tavily."""
+﻿"""High-speed parallel search tools integration: DuckDuckGo, ArXiv, Wikipedia, and Tavily."""
 
 import logging
 import os
 import warnings
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict, Any, Optional
 from src.models.schemas import SourceDocument
 from src.tools.web_scraper import scrape_url_content
 
-# Filter warnings from duckduckgo rename notice
 warnings.filterwarnings("ignore", category=RuntimeWarning, module="duckduckgo_search")
-
 logger = logging.getLogger(__name__)
 
 
@@ -43,8 +42,7 @@ class ArXivSearchTool:
         try:
             import arxiv
             client = arxiv.Client()
-            # Clean query for ArXiv API
-            clean_query = query.replace(":", " ").replace("-", " ")[:120]
+            clean_query = query.replace(":", " ").replace("-", " ")[:100]
             search = arxiv.Search(
                 query=clean_query,
                 max_results=max_results,
@@ -74,8 +72,7 @@ class WikipediaSearchTool:
         try:
             import wikipedia
             wikipedia.set_lang("en")
-            # Extract key concept words for Wikipedia
-            keywords = " ".join([w for w in query.split() if len(w) > 2][:4])
+            keywords = " ".join([w for w in query.split() if len(w) > 2][:3])
             titles = wikipedia.search(keywords, results=max_results)
             for title in titles:
                 try:
@@ -116,7 +113,7 @@ class TavilySearchTool:
                     "include_answer": False,
                     "max_results": max_results
                 },
-                timeout=10
+                timeout=8
             )
             if response.status_code == 200:
                 data = response.json()
@@ -134,7 +131,7 @@ class TavilySearchTool:
 
 
 class UnifiedRetriever:
-    """Orchestrates retrieval across enabled search engines and enriches sources."""
+    """Orchestrates high-speed concurrent retrieval across enabled search engines."""
 
     def __init__(
         self,
@@ -152,33 +149,34 @@ class UnifiedRetriever:
         self.scrape_full_content = scrape_full_content
         self.max_scrape_count = max_scrape_count
 
+    def _query_worker(self, query: str) -> List[Dict[str, Any]]:
+        results = []
+        if self.tavily:
+            results.extend(self.tavily.search(query, max_results=3))
+        if self.ddg:
+            results.extend(self.ddg.search(query, max_results=3))
+        if self.wiki:
+            results.extend(self.wiki.search(query, max_results=2))
+        if self.arxiv:
+            results.extend(self.arxiv.search(query, max_results=2))
+        return results
+
     def retrieve(self, queries: List[str], max_total_sources: int = 12) -> List[SourceDocument]:
-        """Executes queries across all available tools, deduplicates, and formats sources."""
+        """Executes search queries in parallel threads for maximum speed."""
         all_raw_results = []
         seen_urls = set()
 
-        for q in queries:
-            # Tavily AI Search (if key is set)
-            if self.tavily:
-                tavily_res = self.tavily.search(q, max_results=3)
-                all_raw_results.extend(tavily_res)
+        # Parallel query execution
+        with ThreadPoolExecutor(max_workers=min(len(queries) or 1, 6)) as executor:
+            futures = [executor.submit(self._query_worker, q) for q in queries]
+            for future in as_completed(futures):
+                try:
+                    res = future.result()
+                    all_raw_results.extend(res)
+                except Exception as e:
+                    logger.debug(f"Query worker error: {e}")
 
-            # DuckDuckGo search
-            if self.ddg:
-                ddg_res = self.ddg.search(q, max_results=3)
-                all_raw_results.extend(ddg_res)
-
-            # Wikipedia search
-            if self.wiki and len(all_raw_results) < max_total_sources:
-                wiki_res = self.wiki.search(q, max_results=2)
-                all_raw_results.extend(wiki_res)
-
-            # ArXiv search
-            if self.arxiv and len(all_raw_results) < max_total_sources:
-                arxiv_res = self.arxiv.search(q, max_results=2)
-                all_raw_results.extend(arxiv_res)
-
-        # Deduplicate results by normalized URL and title
+        # Deduplicate
         unique_results = []
         for item in all_raw_results:
             url = item.get("url", "").strip().rstrip("/")
@@ -191,31 +189,40 @@ class UnifiedRetriever:
                 if len(unique_results) >= max_total_sources:
                     break
 
-        # Convert to SourceDocument models with 1-based indexing
+        # Parallel content scraping for top sources
+        sources_to_scrape = [
+            (idx, item) for idx, item in enumerate(unique_results[:self.max_scrape_count], start=1)
+            if item.get("source_type") in ["web", "tavily"] and item.get("url")
+        ]
+
+        scraped_contents: Dict[int, Optional[str]] = {}
+        if self.scrape_full_content and sources_to_scrape:
+            with ThreadPoolExecutor(max_workers=len(sources_to_scrape)) as scraper_exec:
+                scrape_futures = {
+                    scraper_exec.submit(scrape_url_content, item["url"], 2500, 5): idx
+                    for idx, item in sources_to_scrape
+                }
+                for fut in as_completed(scrape_futures):
+                    idx = scrape_futures[fut]
+                    try:
+                        scraped_contents[idx] = fut.result()
+                    except Exception:
+                        scraped_contents[idx] = None
+
+        # Build SourceDocuments
         source_docs: List[SourceDocument] = []
-        scraped_count = 0
-
         for idx, item in enumerate(unique_results, start=1):
-            url = item.get("url", "")
-            content = None
-
-            # Attempt full content scraping for the first few web sources
-            if self.scrape_full_content and scraped_count < self.max_scrape_count:
-                if item.get("source_type") in ["web", "tavily"] and url:
-                    content = scrape_url_content(url, max_chars=3000)
-                    if content:
-                        scraped_count += 1
-
+            content = scraped_contents.get(idx)
             doc = SourceDocument(
                 id=idx,
                 title=item.get("title", f"Source {idx}"),
-                url=url,
+                url=item.get("url", ""),
                 snippet=item.get("snippet", ""),
                 content=content,
                 source_type=item.get("source_type", "web"),
                 authors=item.get("authors", []),
                 published_date=item.get("published_date"),
-                relevance_score=0.85
+                relevance_score=0.9
             )
             source_docs.append(doc)
 

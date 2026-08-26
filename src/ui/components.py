@@ -19,7 +19,7 @@ def render_header():
     st.markdown("""
     <div class="main-header">
         <h1>🧠 Multi-Agent AI Research Assistant</h1>
-        <p>Autonomous LLM Research Squad powered by LangGraph, NVIDIA NIM / Multi-Provider LLMs, Multi-Source Retrieval & Quality Fact-Checking</p>
+        <p>⚡ Ultra-Fast Autonomous Research Squad powered by NVIDIA NIM & LangGraph</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -32,13 +32,13 @@ def render_sidebar() -> Dict[str, Any]:
         # Provider Selection
         provider = st.selectbox(
             "LLM Provider",
-            options=["NVIDIA NIM (Nemotron)", "Google Gemini", "OpenAI", "Groq", "Anthropic", "Ollama", "Offline / Mock Mode"],
+            options=["NVIDIA NIM (Fast)", "Google Gemini", "OpenAI", "Groq", "Anthropic", "Ollama", "Offline / Mock Mode"],
             index=0,
             help="Choose the LLM engine for agent reasoning."
         )
 
         provider_key_map = {
-            "NVIDIA NIM (Nemotron)": "nvidia",
+            "NVIDIA NIM (Fast)": "nvidia",
             "Google Gemini": "google",
             "OpenAI": "openai",
             "Groq": "groq",
@@ -50,18 +50,19 @@ def render_sidebar() -> Dict[str, Any]:
 
         # Model Name Selection
         if selected_provider == "nvidia":
-            model_name = st.selectbox(
+            model_display_map = {
+                "⚡ nvidia/nemotron-3-nano-30b-a3b (Ultra-Fast 0.4s)": "nvidia/nemotron-3-nano-30b-a3b",
+                "⚡ meta/llama-3.2-11b-vision-instruct (Fast 0.6s)": "meta/llama-3.2-11b-vision-instruct",
+                "🧠 nvidia/nemotron-3-super-120b-a12b (Deep Reasoning 120B)": "nvidia/nemotron-3-super-120b-a12b",
+                "nvidia/nemotron-3.5-lightning-30b-a3b": "nvidia/nemotron-3.5-lightning-30b-a3b"
+            }
+            selected_display = st.selectbox(
                 "NVIDIA NIM Model",
-                options=[
-                    "nvidia/nemotron-3-super-120b-a12b",
-                    "nvidia/llama-3.1-nemotron-70b-instruct",
-                    "nvidia/nemotron-4-340b-instruct",
-                    "deepseek-ai/deepseek-v4-flash-0731",
-                    "meta/llama-3.2-90b-vision-instruct"
-                ],
+                options=list(model_display_map.keys()),
                 index=0,
-                help="High-performance reasoning and research models hosted on NVIDIA NIM."
+                help="High-speed reasoning and synthesis models hosted on NVIDIA NIM."
             )
+            model_name = model_display_map[selected_display]
             env_nvidia_key = os.getenv("NVIDIA_API_KEY", "")
             api_key = st.text_input("NVIDIA NIM API Key", value=env_nvidia_key, type="password", help="API key from integrate.api.nvidia.com.")
         elif selected_provider == "google":
@@ -106,12 +107,12 @@ def render_sidebar() -> Dict[str, Any]:
         st.subheader("🎯 Research Parameters")
         depth_option = st.radio(
             "Research Depth",
-            options=["Brief Overview", "Standard Research", "Deep Comprehensive Investigation"],
-            index=1,
+            options=["Brief Overview (Fast)", "Standard Research", "Deep Comprehensive Investigation"],
+            index=0,
             help="Controls the number of subtopics and research breadth."
         )
         depth_map = {
-            "Brief Overview": "brief",
+            "Brief Overview (Fast)": "brief",
             "Standard Research": "standard",
             "Deep Comprehensive Investigation": "deep"
         }
@@ -129,12 +130,12 @@ def render_sidebar() -> Dict[str, Any]:
             "Max Refinement Iterations",
             min_value=1,
             max_value=3,
-            value=2,
+            value=1,
             help="Maximum loops allowed for fact-checker self-correction."
         )
 
         st.divider()
-        st.caption("Multi-Agent AI Research Assistant v1.1 • Powered by NVIDIA NIM & LangGraph")
+        st.caption("Multi-Agent AI Research Assistant v1.2 • Optimized for NVIDIA NIM")
 
         return {
             "provider": selected_provider,
@@ -156,8 +157,8 @@ def render_workflow_diagram():
 ```mermaid
 flowchart LR
     UserQuery([User Research Topic]) --> Planner[1. Lead Planner (NVIDIA Nemotron)]
-    Planner -->|Subtopics & Queries| Retriever[2. Multi-Source Retriever]
-    Retriever -->|Verified Sources| Writer[3. Research Writer (NVIDIA Nemotron)]
+    Planner -->|Subtopics & Parallel Queries| Retriever[2. Concurrent Retriever]
+    Retriever -->|Verified Sources| Writer[3. Parallel Writer (NVIDIA Nemotron)]
     Writer -->|Draft Sections| Reviewer[4. Fact-Checker & Reviewer]
     
     Reviewer -->|Iterate / Needs Refinement| Retriever
@@ -210,7 +211,6 @@ def render_report_view(report: FinalReport):
     </div>
     """, unsafe_allow_html=True)
 
-    # Export toolbar
     c1, c2, c3, c4 = st.columns(4)
     md_data = export_to_markdown(report)
     html_data = export_to_html(report)
@@ -256,10 +256,8 @@ def render_report_view(report: FinalReport):
 
     st.divider()
 
-    # Executive Summary Card
     st.info(f"**Executive Summary**\n\n{report.executive_summary}")
 
-    # Key Strategic Takeaways
     if report.key_takeaways:
         st.subheader("💡 Key Strategic Takeaways")
         cols = st.columns(min(len(report.key_takeaways), 3))
@@ -269,7 +267,6 @@ def render_report_view(report: FinalReport):
 
     st.divider()
 
-    # Sections
     for i, section in enumerate(report.sections, start=1):
         st.subheader(f"{i}. {section.section_title}")
         st.markdown(section.content)
@@ -280,12 +277,10 @@ def render_report_view(report: FinalReport):
                     st.markdown(f"- {f}")
         st.markdown("")
 
-    # Future Outlook
     if report.future_outlook:
         st.subheader("🔭 Future Outlook & Emerging Trajectory")
         st.markdown(report.future_outlook)
 
-    # Methodology
     if report.methodology_notes:
         with st.expander("🔬 Research Methodology & Agent Verification", expanded=False):
             st.markdown(report.methodology_notes)
