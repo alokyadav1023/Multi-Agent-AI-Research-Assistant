@@ -1,6 +1,6 @@
 ﻿# 🧠 Multi-Agent AI Research Assistant
 
-An autonomous, multi-agent AI research and information synthesis system built with **LangGraph**, **Streamlit**, **Python**, and multi-provider LLM support (**Google Gemini**, **OpenAI**, **Groq**, **Anthropic**, **Ollama**, and an offline **Mock Mode**).
+An autonomous, multi-agent AI research and information synthesis system built with **LangGraph**, **Streamlit**, **Python**, and high-speed **NVIDIA NIM** models (`nvidia/nemotron-3-nano-30b-a3b`, `nvidia/nemotron-3-super-120b-a12b`), along with multi-provider LLM support (**Google Gemini**, **OpenAI**, **Groq**, **Anthropic**, **Ollama**, and offline **Mock Mode**).
 
 ---
 
@@ -8,8 +8,8 @@ An autonomous, multi-agent AI research and information synthesis system built wi
 
 The **Multi-Agent AI Research Assistant** coordinates specialized autonomous agents to execute end-to-end research workflows:
 1. **Task Decomposition & Strategic Planning**: Breaks down complex research topics into analytical pillars, hypotheses, and targeted search queries.
-2. **Multi-Source Information Retrieval**: Gathers and cross-references evidence from **DuckDuckGo**, **ArXiv** academic preprints, **Wikipedia**, and optional **Tavily AI Search**, scraping full text from target web pages.
-3. **Structured Technical Synthesis**: Drafts rigorous, in-depth sections with inline numeric citations [1], [2] linked to the verified source catalog.
+2. **Multi-Source Information Retrieval**: Concurrently gathers and cross-references evidence from **DuckDuckGo**, **ArXiv** scientific preprints, **Wikipedia**, and optional **Tavily AI Search**, scraping full text from target web pages.
+3. **Structured Technical Synthesis**: Drafts rigorous, in-depth sections in parallel with inline numeric citations [1], [2] linked to the verified source catalog.
 4. **Fact-Checking & Reflection Loops**: Audits the draft for factual fidelity, grounding, and completeness, executing targeted refinement loops if gaps exist.
 5. **Executive Formatting & Export**: Packages publication-ready reports with Executive Summaries, Table of Contents, BibTeX/References, and one-click export to **PDF**, **Markdown**, **HTML**, and **JSON**.
 6. **Interactive Consultation (Grounded Q&A)**: Enables follow-up questions answered strictly from the research context.
@@ -23,12 +23,12 @@ flowchart TD
     User([User Research Topic & Depth]) --> UI[Streamlit Interactive Frontend]
     UI --> Orchestrator[LangGraph State Orchestrator]
 
-    subgraph MultiAgentSquad ["LangGraph Multi-Agent Workflow"]
+    subgraph MultiAgentSquad ["LangGraph Multi-Agent Workflow (NVIDIA NIM Accelerated)"]
         Orchestrator --> Planner["1. Lead Planner Agent<br/>(Task Decomposition & Subtopics)"]
-        Planner --> Retriever["2. Information Retriever Agent<br/>(DuckDuckGo, ArXiv, Wikipedia, Tavily)"]
+        Planner --> Retriever["2. Concurrent Retriever Agent<br/>(DuckDuckGo, ArXiv, Wikipedia, Tavily)"]
         Retriever --> Scraper["Web Content Extractor"]
-        Scraper --> Writer["3. Research Writer Agent<br/>(Synthesis & Inline Citations)"]
-        Writer --> Reviewer["4. Fact-Checker & Reviewer Agent<br/>(Factual Grounding & Quality Score)"]
+        Scraper --> Writer["3. Parallel Writer Agent<br/>(Multi-Threaded Synthesis & Citations)"]
+        Writer --> Reviewer["4. Fact-Checker & Reviewer Agent<br/>(Factual Grounding & Quality Audit)"]
         
         Reviewer -->|Needs Refinement & Iterations < Max| Retriever
         Reviewer -->|Approved| Formatter["5. Executive Formatter Agent<br/>(TOC, Metrics, Key Takeaways)"]
@@ -47,11 +47,14 @@ flowchart TD
 - **Autonomous Agent Squad**:
   - `PlannerAgent`: Formulates structured decomposition using Pydantic models.
   - `RetrieverAgent`: Multi-channel search with deduplication and relevance scoring.
-  - `WriterAgent`: Section-by-section synthesis with strict citation anchors.
+  - `WriterAgent`: Section-by-section concurrent synthesis with strict citation anchors.
   - `ReviewerAgent`: Factual consistency check and reflection loop routing.
   - `QAAgent`: Grounded interactive follow-up agent.
+- **Ultra-Fast NVIDIA NIM Engine**:
+  - `⚡ nvidia/nemotron-3-nano-30b-a3b`: Sub-second latency (~0.47s).
+  - `🧠 nvidia/nemotron-3-super-120b-a12b`: 120B parameter deep reasoning flagship.
 - **Multi-Source Evidence Gathering**: DuckDuckGo (no key required), ArXiv (academic preprints), Wikipedia (encyclopedic foundation), and Tavily (deep search).
-- **Multi-Provider LLM Engine**: Seamless switching between Google Gemini, OpenAI, Groq (Llama 3.3 70B), Anthropic Claude, Ollama local models, and offline Mock Mode.
+- **Multi-Provider LLM Engine**: Seamless switching between NVIDIA NIM, Google Gemini, OpenAI, Groq (Llama 3.3 70B), Anthropic Claude, Ollama local models, and offline Mock Mode.
 - **Interactive Streamlit Interface**:
   - Real-time agent activity timeline and thought trace.
   - Interactive tabs for Final Report, Research Plan, Source Inspector, Quality Audit, and Follow-up Q&A.
@@ -59,47 +62,67 @@ flowchart TD
 
 ---
 
-## 📦 Installation & Quick Start
+## 💻 Commands to Run on Localhost
 
-### 1. Clone or Open the Repository
-```bash
-cd "Multi-Agent AI Research Assistant"
+### Method 1: One-Line Command (Fastest)
+In your terminal inside the project directory:
+
+```powershell
+.\.venv\Scripts\python.exe -m streamlit run app.py
 ```
 
-### 2. Create and Activate Virtual Environment
-```bash
-python -m venv .venv
-# On Windows:
-.venv\Scripts\activate
-# On Linux/macOS:
-source .venv/bin/activate
-```
+### Method 2: Standard Terminal Flow
+```powershell
+# 1. Activate the virtual environment
+.\.venv\Scripts\activate
 
-### 3. Install Dependencies
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Configure API Keys (Optional)
-Copy the example environment file:
-```bash
-cp .env.example .env
-```
-*(You can also configure API keys directly inside the Streamlit sidebar at runtime, or select **Offline / Mock Mode** to test without any keys.)*
-
-### 5. Launch the Streamlit App
-```bash
+# 2. Start the application
 streamlit run app.py
 ```
-Or double-click `run_app.bat` on Windows.
+
+### Method 3: 1-Click Batch Launcher (Windows)
+Double-click `run_app.bat` or run:
+```powershell
+.\run_app.bat
+```
+
+Once started, open your browser and go to:
+👉 **`http://localhost:8501`**
+
+---
+
+## 📦 Setting Up Fresh from Scratch (New Machine)
+
+```bash
+# 1. Clone the repo
+git clone https://github.com/alokyadav1023/Multi-Agent-AI-Research-Assistant.git
+cd Multi-Agent-AI-Research-Assistant
+
+# 2. Create virtual environment
+python -m venv .venv
+
+# 3. Activate virtual environment
+# Windows:
+.\.venv\Scripts\activate
+# macOS/Linux:
+source .venv/bin/activate
+
+# 4. Install dependencies
+pip install -r requirements.txt
+
+# 5. Configure API Key (Optional)
+cp .env.example .env
+
+# 6. Run the app
+streamlit run app.py
+```
 
 ---
 
 ## 🧪 Running Automated Tests
 
-Run the test suite with pytest:
 ```bash
-pytest
+pytest -v
 ```
 
 ---
@@ -118,7 +141,7 @@ Multi-Agent AI Research Assistant/
 │   ├── agents/
 │   │   ├── planner.py         # Lead Planner Agent
 │   │   ├── retriever.py       # Information Retrieval Agent
-│   │   ├── writer.py          # Synthesis & Writer Agent
+│   │   ├── writer.py          # Parallel Synthesis & Writer Agent
 │   │   ├── reviewer.py        # Quality Reviewer & Fact-Checker
 │   │   └── qa_agent.py        # Grounded Q&A Consultation Agent
 │   ├── graph/
@@ -139,5 +162,6 @@ Multi-Agent AI Research Assistant/
     ├── test_models.py         # Pydantic schema validation tests
     ├── test_tools.py          # Search and scraping tests
     ├── test_agents.py         # Agent node tests
+    ├── test_nvidia.py         # NVIDIA NIM provider tests
     └── test_workflow.py       # LangGraph end-to-end execution tests
 ```
