@@ -1,4 +1,6 @@
-"""Custom CSS styles for Multi-Agent AI Research Assistant Streamlit UI."""
+﻿"""Custom CSS styles for Multi-Agent AI Research Assistant Streamlit UI."""
+
+import streamlit as st
 
 CUSTOM_CSS = """
 <style>
@@ -129,3 +131,8 @@ CUSTOM_CSS = """
 }
 </style>
 """
+
+
+def apply_custom_styles():
+    """Injects custom CSS into the Streamlit app."""
+    st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
