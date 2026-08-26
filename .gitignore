@@ -47,3 +47,7 @@ outputs/
 .pytest_cache/
 .coverage
 htmlcov/
+
+cloudflared.exe
+tunnel.log
+public_url.txt
